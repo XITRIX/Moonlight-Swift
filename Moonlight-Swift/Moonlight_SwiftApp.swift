@@ -6,12 +6,32 @@
 //
 
 import SwiftUI
+import SwiftData
 
 @main
 struct Moonlight_SwiftApp: App {
+    @State var container: ModelContainer
+    @State var discoveryManager: DiscoveryManager
+
+    init() {
+        do {
+            let container = try ModelContainer(for: TemporaryHost.self)
+            let discoveryManager = DiscoveryManager(modelContainer: container)
+
+            self.container = container
+            self.discoveryManager = discoveryManager
+        } catch {
+            fatalError("Failed to create ModelContainer: \(error)")
+        }
+    }
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            NavigationStack {
+                DevicesListView()
+            }
+            .environment(discoveryManager)
         }
+        .modelContainer(container)
     }
 }

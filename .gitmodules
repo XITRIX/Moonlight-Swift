@@ -1,0 +1,3 @@
+[submodule "Submodules/moonlight-common-c"]
+	path = Submodules/moonlight-common-c
+	url = https://XITRIX@github.com/XITRIX/moonlight-common-c.git
