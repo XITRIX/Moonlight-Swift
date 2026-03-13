@@ -43,8 +43,8 @@ import QuartzCore
 
 @objcMembers
 final class VideoDecoderRenderer: NSObject {
-    private let view: UIView
-    private let callbacks: any ConnectionCallbacks
+    private let view: AVView
+    private weak var callbacks: ConnectionCallbacks?
     private let streamAspectRatio: CGFloat
 
     private var displayLayer: AVSampleBufferDisplayLayer = .init()
@@ -69,8 +69,8 @@ final class VideoDecoderRenderer: NSObject {
     private var isAV1: Bool { (videoFormat & VIDEO_FORMAT_MASK_AV1) != 0 }
 
     init(
-        view: UIView,
-        callbacks: any ConnectionCallbacks,
+        view: AVView,
+        callbacks: ConnectionCallbacks?,
         streamAspectRatio aspectRatio: Float,
         useFramePacing: Bool
     ) {
@@ -82,36 +82,32 @@ final class VideoDecoderRenderer: NSObject {
         reinitializeDisplayLayer()
     }
 
-    deinit {
-        stop()
-    }
-
     private func reinitializeDisplayLayer() {
-        let oldLayer = displayLayer
+//        let oldLayer = displayLayer
 
-        let newLayer = AVSampleBufferDisplayLayer()
-        newLayer.backgroundColor = UIColor.black.cgColor
+//        let newLayer = view.avLayer //AVSampleBufferDisplayLayer()
+//        newLayer.backgroundColor = UIColor.black.cgColor
+//
+//        let bounds = view.bounds
+//        let videoSize: CGSize
+//        if bounds.width > bounds.height * streamAspectRatio {
+//            videoSize = CGSize(width: bounds.height * streamAspectRatio, height: bounds.height)
+//        } else {
+//            videoSize = CGSize(width: bounds.width, height: bounds.width / streamAspectRatio)
+//        }
 
-        let bounds = view.bounds
-        let videoSize: CGSize
-        if bounds.width > bounds.height * streamAspectRatio {
-            videoSize = CGSize(width: bounds.height * streamAspectRatio, height: bounds.height)
-        } else {
-            videoSize = CGSize(width: bounds.width, height: bounds.width / streamAspectRatio)
-        }
+//        newLayer.position = CGPoint(x: bounds.midX, y: bounds.midY)
+//        newLayer.bounds = CGRect(origin: .zero, size: videoSize)
+//        newLayer.videoGravity = .resize
+//        newLayer.isHidden = true
 
-        newLayer.position = CGPoint(x: bounds.midX, y: bounds.midY)
-        newLayer.bounds = CGRect(origin: .zero, size: videoSize)
-        newLayer.videoGravity = .resize
-        newLayer.isHidden = true
+//        if oldLayer.superlayer != nil {
+//            view.layer.replaceSublayer(oldLayer, with: newLayer)
+//        } else {
+//            view.layer.addSublayer(newLayer)
+//        }
 
-        if oldLayer.superlayer != nil {
-            view.layer.replaceSublayer(oldLayer, with: newLayer)
-        } else {
-            view.layer.addSublayer(newLayer)
-        }
-
-        displayLayer = newLayer
+        displayLayer = view.avLayer
         formatDesc = nil
     }
 
@@ -293,10 +289,10 @@ final class VideoDecoderRenderer: NSObject {
             return nil
         }
 
-        var parameterSetPointers: [UnsafePointer<UInt8>] = parameterSetBuffers.map {
+        let parameterSetPointers: [UnsafePointer<UInt8>] = parameterSetBuffers.map {
             $0.bytes.assumingMemoryBound(to: UInt8.self)
         }
-        var parameterSetSizes: [Int] = parameterSetBuffers.map { $0.length }
+        let parameterSetSizes: [Int] = parameterSetBuffers.map { $0.length }
 
         Log.i("Constructing new H264 format description")
 
@@ -329,10 +325,10 @@ final class VideoDecoderRenderer: NSObject {
             return nil
         }
 
-        var parameterSetPointers: [UnsafePointer<UInt8>] = parameterSetBuffers.map {
+        let parameterSetPointers: [UnsafePointer<UInt8>] = parameterSetBuffers.map {
             $0.bytes.assumingMemoryBound(to: UInt8.self)
         }
-        var parameterSetSizes: [Int] = parameterSetBuffers.map { $0.length }
+        let parameterSetSizes: [Int] = parameterSetBuffers.map { $0.length }
 
         Log.i("Constructing new HEVC format description")
 
@@ -716,7 +712,7 @@ final class VideoDecoderRenderer: NSObject {
 
         if du.pointee.frameType == FRAME_TYPE_IDR {
             displayLayer.isHidden = false
-            callbacks.videoContentShown()
+            callbacks?.videoContentShown()
         }
 
         return DR_OK

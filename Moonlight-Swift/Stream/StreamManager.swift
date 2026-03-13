@@ -8,7 +8,7 @@
 import UIKit
 
 class StreamManager {
-    init(config: StreamConfiguration, renderView: UIView, connectionCallbacks: ConnectionCallbacks) {
+    init(config: StreamConfiguration, renderView: AVView, connectionCallbacks: ConnectionCallbacks) {
         self.config = config
         self.renderView = renderView
         self.callbacks = connectionCallbacks
@@ -17,8 +17,8 @@ class StreamManager {
     }
 
     private let config: StreamConfiguration
-    private let renderView: UIView
-    private let callbacks: ConnectionCallbacks
+    private let renderView: AVView
+    private weak var callbacks: ConnectionCallbacks?
     private var connection: Connection!
 }
 
@@ -30,7 +30,7 @@ extension StreamManager {
         await hMan.executeRequest(.init(for: serverInfoResp, with: hMan.newServerInfoRequest(fastFail: false), fallbackError: 401, fallbackRequest: hMan.newHttpServerInfoRequest()))
 
         guard serverInfoResp.isStatusOk else {
-            callbacks.launchFailed(serverInfoResp.statusMessage)
+            callbacks?.launchFailed(serverInfoResp.statusMessage)
             return
         }
 
@@ -40,12 +40,12 @@ extension StreamManager {
         let serverState = serverInfoResp.getStringTag("state")
 
         guard let pairStatus, let appversion, let serverState else {
-            callbacks.launchFailed("Failed to connect to PC")
+            callbacks?.launchFailed("Failed to connect to PC")
             return
         }
 
         guard pairStatus == "1" else {
-            callbacks.launchFailed("Device not paired to PC")
+            callbacks?.launchFailed("Device not paired to PC")
             return
         }
 
@@ -55,7 +55,7 @@ extension StreamManager {
             // We can't directly identify Pascal, but we can look for HEVC Main10 which was added in the same generation.
             let codecSupport = serverInfoResp.getStringTag("ServerCodecModeSupport")
             guard let codecSupport, let codecSupportInt = Int(codecSupport), codecSupportInt & 0x200 != 0 else {
-                callbacks.launchFailed("Your host PC's GPU doesn't support streaming video resolutions over 4K.")
+                callbacks?.launchFailed("Your host PC's GPU doesn't support streaming video resolutions over 4K.")
                 return;
             }
         }
@@ -105,19 +105,19 @@ private extension StreamManager {
         await hMan.executeRequest(.init(for: launchResp, with: hMan.newLaunchOrResumeRequest("launch", config: config)))
         let resume = launchResp.getStringTag("gamesession")
         if !launchResp.isStatusOk {
-            callbacks.launchFailed(launchResp.statusMessage)
+            callbacks?.launchFailed(launchResp.statusMessage)
             Log.e("Failed Launch Response: \(launchResp.statusMessage)")
             return false
         }
 
         guard let resume, resume != "0" else {
-            callbacks.launchFailed("Failed to launch app")
+            callbacks?.launchFailed("Failed to launch app")
             Log.e("Failed to parse game session")
             return false
         }
 
         guard let res = launchResp.getStringTag("sessionUrl0") else {
-            callbacks.launchFailed("Failed to launch app")
+            callbacks?.launchFailed("Failed to launch app")
             Log.e("Failed to parse game session, sessionUrl0 is empty")
             return false
         }
@@ -130,19 +130,19 @@ private extension StreamManager {
         await hMan.executeRequest(.init(for: resumeResp, with: hMan.newLaunchOrResumeRequest("resume", config: config)))
         let resume = resumeResp.getStringTag("resume")
         if !resumeResp.isStatusOk {
-            callbacks.launchFailed(resumeResp.statusMessage)
+            callbacks?.launchFailed(resumeResp.statusMessage)
             Log.e("Failed Resume Response: \(resumeResp.statusMessage)")
             return false
         }
 
         guard let resume, resume != "0" else {
-            callbacks.launchFailed("Failed to resume app")
+            callbacks?.launchFailed("Failed to resume app")
             Log.e("Failed to parse resume response")
             return false
         }
 
         guard let res = resumeResp.getStringTag("sessionUrl0") else {
-            callbacks.launchFailed("Failed to resume app")
+            callbacks?.launchFailed("Failed to resume app")
             Log.e("Failed to parse resume response, sessionUrl0 is empty")
             return false
         }

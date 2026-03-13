@@ -17,16 +17,17 @@ struct StreamingView: View {
     var body: some View {
         Group {
             if let config = prepareToStream() {
-                StreamingUIView(config: config)
+                StreamingScreenView(config: config)
+                    .ignoresSafeArea()
             } else {
                 Text("Failed to ferch config")
             }
         }
-            .toolbar {
-                Button(role: .close) {
-                    dismiss()
-                }
+        .toolbar {
+            Button(role: .close) {
+                dismiss()
             }
+        }
     }
 }
 
@@ -76,39 +77,37 @@ private extension StreamingView {
             supportedVideoFormats.insert(.H264)
         }
 
-        let config = StreamConfiguration(host: host,
-                                         https: httpsPort,
-                                         appVersion: "",
-                                         gfeVersion: nil,
-                                         appID: appID,
-                                         appName: appName,
-                                         rtspSessionUrl: "",
-                                         serverCodecModeSupport: app.host.serverCodecModeSupport,
-                                         width: width,
-                                         height: height,
-                                         frameRate: framerate,
-                                         bitRate: bitrate,
-                                         riKeyId: Int(arc4random()),
-                                         riKey: Utils.randomBytes(16),
-                                         gamepadMask: 0x1,
-                                         optimizeGameSettings: false,
-                                         playAudioOnPC: playAidioOnPC,
-                                         swapABXYButtons: false,
-                                         audioConfiguration: audioConfig,
-                                         supportedVideoFormats: supportedVideoFormats,
-                                         multiController: false,
-                                         useFramePacing: true,
-                                         serverCert: serverCert)
-
-        return config
+        return StreamConfiguration(host: host,
+                                   https: httpsPort,
+                                   appVersion: "",
+                                   gfeVersion: nil,
+                                   appID: appID,
+                                   appName: appName,
+                                   rtspSessionUrl: "",
+                                   serverCodecModeSupport: app.host.serverCodecModeSupport,
+                                   width: width,
+                                   height: height,
+                                   frameRate: framerate,
+                                   bitRate: bitrate,
+                                   riKeyId: Int(arc4random()),
+                                   riKey: Utils.randomBytes(16),
+                                   gamepadMask: 0x1,
+                                   optimizeGameSettings: false,
+                                   playAudioOnPC: playAidioOnPC,
+                                   swapABXYButtons: false,
+                                   audioConfiguration: audioConfig,
+                                   supportedVideoFormats: supportedVideoFormats,
+                                   multiController: false,
+                                   useFramePacing: true,
+                                   serverCert: serverCert)
     }
 }
 
-struct StreamingUIView: UIViewRepresentable {
-    @State var config: StreamConfiguration
+struct StreamingScreenView: UIViewRepresentable {
+    let config: StreamConfiguration
 
-    func makeUIView(context: Context) -> UIView {
-        let view = UIView()
+    func makeUIView(context: Context) -> AVView {
+        let view = AVView()
 
         let streamManager: StreamManager = .init(config: config, renderView: view, connectionCallbacks: context.coordinator)
         context.coordinator.streamManager = streamManager
@@ -116,66 +115,83 @@ struct StreamingUIView: UIViewRepresentable {
 
         return view
     }
-    
-    func updateUIView(_ uiView: UIView, context: Context) {}
+
+    func updateUIView(_ uiView: AVView, context: Context) {}
+
+    static func dismantleUIView(_ uiView: AVView, coordinator: Coordinator) {
+        coordinator.streamManager?.stopStream()
+        coordinator.streamManager = nil
+    }
 
     func makeCoordinator() -> Coordinator {
         Coordinator()
     }
 
-    class Coordinator: ConnectionCallbacks {
-        func connectionStarted() {
-            Log.i("Connection started")
-        }
+    class Coordinator {
+        fileprivate var streamManager: StreamManager?
+    }
+}
 
-        func connectionTerminated(_ errorCode: Int) {
-            Log.i("Connection terminated: \(errorCode)")
-        }
+extension StreamingScreenView.Coordinator: ConnectionCallbacks {
+    func connectionStarted() {
+        Log.i("Connection started")
+    }
 
-        func stageStarting(_ stageName: String) {
-            Log.i("Starting \(stageName)")
-        }
+    func connectionTerminated(_ errorCode: Int) {
+        Log.i("Connection terminated: \(errorCode)")
+    }
 
-        func stageComplete(_ stageName: String) {
-            Log.i("Stage \(stageName) completed")
-        }
+    func stageStarting(_ stageName: String) {
+        Log.i("Starting \(stageName)")
+    }
 
-        func stageFailed(_ stageName: String, withError errorCode: Int, portTestFlags: Int) {
-            Log.i("Stage \(stageName) failed")
-        }
+    func stageComplete(_ stageName: String) {
+        Log.i("Stage \(stageName) completed")
+    }
 
-        func launchFailed(_ message: String) {
-            Log.i("Launch failed: \(message)")
-        }
+    func stageFailed(_ stageName: String, withError errorCode: Int, portTestFlags: Int) {
+        Log.i("Stage \(stageName) failed")
+    }
 
-        func rumble(_ controllerNumber: UInt16, lowFreqMotor: UInt16, highFreqMotor: UInt16) {
+    func launchFailed(_ message: String) {
+        Log.i("Launch failed: \(message)")
+    }
 
-        }
+    func rumble(_ controllerNumber: UInt16, lowFreqMotor: UInt16, highFreqMotor: UInt16) {}
 
-        func connectionStatusUpdate(_ status: Int) {
-            Log.i("Connection status update: \(status)")
-        }
+    func connectionStatusUpdate(_ status: Int) {
+        Log.i("Connection status update: \(status)")
+    }
 
-        func setHdrMode(_ enabled: Bool) {
-            Log.i("Set HDR: \(enabled)")
-        }
+    func setHdrMode(_ enabled: Bool) {
+        Log.i("Set HDR: \(enabled)")
+    }
 
-        func rumbleTriggers(_ controllerNumber: UInt16, leftTrigger: UInt16, rightTrigger: UInt16) {
+    func rumbleTriggers(_ controllerNumber: UInt16, leftTrigger: UInt16, rightTrigger: UInt16) {}
 
-        }
+    func setMotionEventState(_ controllerNumber: UInt16, motionType: UInt8, reportRateHz: UInt16) {}
 
-        func setMotionEventState(_ controllerNumber: UInt16, motionType: UInt8, reportRateHz: UInt16) {
+    func setControllerLed(_ controllerNumber: UInt16, r: UInt8, g: UInt8, b: UInt8) {}
 
-        }
+    func videoContentShown() {}
+}
 
-        func setControllerLed(_ controllerNumber: UInt16, r: UInt8, g: UInt8, b: UInt8) {
 
-        }
+class AVView: UIView {
+    var avLayer: AVSampleBufferDisplayLayer { layer as! AVSampleBufferDisplayLayer }
+    override class var layerClass: AnyClass { AVSampleBufferDisplayLayer.self }
 
-        func videoContentShown() {
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        setup()
+    }
 
-        }
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        setup()
+    }
 
-        var streamManager: StreamManager?
+    private func setup() {
+        avLayer.videoGravity = .resizeAspect
     }
 }

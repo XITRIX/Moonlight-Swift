@@ -8,9 +8,10 @@
 import Foundation
 import libxml2
 
-let TAG_STATUS_CODE = "status_code";
-let TAG_STATUS_MESSAGE = "status_message";
+nonisolated let TAG_STATUS_CODE = "status_code";
+nonisolated let TAG_STATUS_MESSAGE = "status_message";
 
+nonisolated
 protocol Response: AnyObject {
     var statusCode: Int { get set }
     var statusMessage: String { get set }
@@ -19,6 +20,7 @@ protocol Response: AnyObject {
     func populateWithData(_ data: Data)
 }
 
+nonisolated
 class HttpResponse: Response {
     var statusCode: Int = 0
     var statusMessage: String = ""
@@ -28,8 +30,9 @@ class HttpResponse: Response {
     open func parseNode(_ node: UnsafeMutablePointer<_xmlNode>, docPtr: xmlDocPtr) {}
 }
 
+nonisolated
 extension HttpResponse {
-    func populateWithData(_ data: Data) {
+    nonisolated func populateWithData(_ data: Data) {
         self.data = data
         parseData()
     }
@@ -74,14 +77,14 @@ extension HttpResponse {
 
         withXMLChar(TAG_STATUS_CODE) { tag in
             if let statusStr = xmlGetProp(root, tag) {
-                defer { xmlFree(statusStr) }
+                defer { xmlFreePointer(statusStr) }
                 statusCode = Int(String(cString: UnsafePointer(statusStr))) ?? 0
             }
         }
 
         withXMLChar(TAG_STATUS_MESSAGE) { tag in
             if let statusMsgXml = xmlGetProp(root, tag) {
-                defer { xmlFree(statusMsgXml) }
+                defer { xmlFreePointer(statusMsgXml) }
                 statusMessage = String(cString: UnsafePointer(statusMsgXml))
             } else {
                 statusMessage = "Server Error"
@@ -101,7 +104,7 @@ extension HttpResponse {
             let value: String
             if let nodeVal {
                 value = String(cString: UnsafePointer(nodeVal))
-                xmlFree(nodeVal)
+                xmlFreePointer(nodeVal)
             } else {
                 value = ""
             }
@@ -118,6 +121,7 @@ extension HttpResponse {
     }
 }
 
+nonisolated
 private extension HttpResponse {
     func withXMLChar<Result>(_ string: String, _ body: (UnsafePointer<xmlChar>) -> Result) -> Result {
         return string.utf8CString.withUnsafeBufferPointer { buffer in
@@ -125,4 +129,8 @@ private extension HttpResponse {
             return body(ptr)
         }
     }
+}
+
+nonisolated func xmlFreePointer<T>(_ pointer: UnsafeMutablePointer<T>?) {
+    MoonlightXMLFree(UnsafeMutableRawPointer(pointer))
 }

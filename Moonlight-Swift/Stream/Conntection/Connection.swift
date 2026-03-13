@@ -7,7 +7,7 @@ import VideoToolbox
 private let connectionInitLock = NSLock()
 private let videoStatsLock = NSLock()
 
-private var globalCallbacks: (any ConnectionCallbacks)?
+private weak var globalCallbacks: (any ConnectionCallbacks)?
 private weak var globalRenderer: VideoDecoderRenderer?
 
 private var lastFrameNumber: Int32 = 0

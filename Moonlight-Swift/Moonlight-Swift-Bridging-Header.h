@@ -4,6 +4,7 @@
 
 #include <Limelight.h>
 #include <Foundation/Foundation.h>
+#include <libxml/tree.h>
 
 #include "Connection.h"
 
@@ -53,4 +54,8 @@ typedef NS_OPTIONS(int32_t, Capability) {
 
 NS_INLINE int32_t SurroundAudioInfoFromAudioConfiguration(int32_t configuration) {
     return SURROUNDAUDIOINFO_FROM_AUDIO_CONFIGURATION(configuration);
+}
+
+NS_INLINE void MoonlightXMLFree(void *pointer) {
+    xmlFree(pointer);
 }

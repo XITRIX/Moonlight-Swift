@@ -42,6 +42,7 @@ class Settings {
 }
 
 extension Settings {
+    nonisolated
     enum Codec: Identifiable, Codable {
         var id: Self { self }
         case auto
@@ -51,6 +52,7 @@ extension Settings {
     }
 }
 
+nonisolated
 extension AudioConfiguration: Identifiable, Codable {
     public var id: Self { self }
 }

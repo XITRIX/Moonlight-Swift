@@ -8,11 +8,11 @@
 import Foundation
 import libxml2
 
-private let TAG_APP = "App";
-private let TAG_APP_TITLE = "AppTitle";
-private let TAG_APP_ID = "ID";
-private let TAG_HDR_SUPPORTED = "IsHdrSupported";
-private let TAG_APP_INSTALL_PATH = "AppInstallPath";
+nonisolated private let TAG_APP = "App";
+nonisolated private let TAG_APP_TITLE = "AppTitle";
+nonisolated private let TAG_APP_ID = "ID";
+nonisolated private let TAG_HDR_SUPPORTED = "IsHdrSupported";
+nonisolated private let TAG_APP_INSTALL_PATH = "AppInstallPath";
 
 class AppListResponse: HttpResponse {
     init(host: TemporaryHost) {
@@ -35,22 +35,22 @@ class AppListResponse: HttpResponse {
                 if xmlNodeNameEquals(currentAppInfoNode.pointee.name, TAG_APP_TITLE) {
                     if let nodeVal = xmlNodeListGetString(docPtr, currentAppInfoNode.pointee.children, 1) {
                         appName = String(cString: UnsafePointer(nodeVal))
-                        xmlFree(nodeVal)
+                        xmlFreePointer(nodeVal)
                     }
                 } else if xmlNodeNameEquals(currentAppInfoNode.pointee.name, TAG_APP_ID) {
                     if let nodeVal = xmlNodeListGetString(docPtr, currentAppInfoNode.pointee.children, 1) {
                         appId = String(cString: UnsafePointer(nodeVal))
-                        xmlFree(nodeVal)
+                        xmlFreePointer(nodeVal)
                     }
                 } else if xmlNodeNameEquals(currentAppInfoNode.pointee.name, TAG_HDR_SUPPORTED) {
                     if let nodeVal = xmlNodeListGetString(docPtr, currentAppInfoNode.pointee.children, 1) {
                         hdrSupported = String(cString: UnsafePointer(nodeVal))
-                        xmlFree(nodeVal)
+                        xmlFreePointer(nodeVal)
                     }
                 } else if xmlNodeNameEquals(currentAppInfoNode.pointee.name, TAG_APP_INSTALL_PATH) {
                     if let nodeVal = xmlNodeListGetString(docPtr, currentAppInfoNode.pointee.children, 1) {
                         appInstallPath = String(cString: UnsafePointer(nodeVal))
-                        xmlFree(nodeVal)
+                        xmlFreePointer(nodeVal)
                     }
                 }
 
@@ -72,6 +72,7 @@ class AppListResponse: HttpResponse {
 }
 
 private extension AppListResponse {
+    nonisolated
     func xmlNodeNameEquals(_ nodeName: UnsafePointer<xmlChar>?, _ string: String) -> Bool {
         guard let nodeName else { return false }
 

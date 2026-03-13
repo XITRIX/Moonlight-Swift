@@ -7,6 +7,7 @@
 
 import Foundation
 
+nonisolated
 class TemporaryApp: Identifiable {
     var id: String
     var name: String

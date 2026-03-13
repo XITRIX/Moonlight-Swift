@@ -7,6 +7,7 @@
 
 import Foundation
 
+nonisolated
 class DiscoveryWorker: Operation, @unchecked Sendable {
     let host: TemporaryHost
     private let uniqueID: String

@@ -462,9 +462,9 @@ private extension CryptoManager {
     typealias PKCS12Ref = OpaquePointer
 
     final class CertKeyPairObject {
-        var x509: X509Ref
-        var pkey: EVP_PKEYRef
-        var p12: PKCS12Ref
+        nonisolated(unsafe) let x509: X509Ref
+        nonisolated(unsafe) let pkey: EVP_PKEYRef
+        nonisolated(unsafe) let p12: PKCS12Ref
 
         init(x509: X509Ref, pkey: EVP_PKEYRef, p12: PKCS12Ref) {
             self.x509 = x509
