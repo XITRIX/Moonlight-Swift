@@ -10,6 +10,7 @@
 #import "Connection.h"
 //#import "Utils.h"
 
+#import <AVFAudio/AVFAudio.h>
 #import <VideoToolbox/VideoToolbox.h>
 @import QuartzCore;
 
@@ -17,7 +18,10 @@
 //#import <SDL.h>
 
 #include "Limelight.h"
-//#include "opus_multistream.h"
+#include "opus_multistream.h"
+#include <stdatomic.h>
+#include <TargetConditionals.h>
+#include <unistd.h>
 
 @implementation Connection {
     SERVER_INFORMATION _serverInfo;
@@ -32,7 +36,7 @@
 }
 
 static NSLock* initLock;
-//static OpusMSDecoder* opusDecoder;
+static OpusMSDecoder* opusDecoder;
 static id<ConnectionCallbacks> _callbacks;
 static int lastFrameNumber;
 static int activeVideoFormat;
@@ -40,10 +44,12 @@ static video_stats_t currentVideoStats;
 static video_stats_t lastVideoStats;
 static NSLock* videoStatsLock;
 
-//static SDL_AudioDeviceID audioDevice;
 static OPUS_MULTISTREAM_CONFIGURATION audioConfig;
-static void* audioBuffer;
-static int audioFrameSize;
+static AVAudioEngine* audioEngine;
+static AVAudioPlayerNode* audioPlayer;
+static AVAudioFormat* audioFormat;
+static dispatch_queue_t audioQueue;
+static atomic_int queuedAudioBuffers;
 
 static VideoDecoderRenderer* renderer;
 
@@ -191,102 +197,159 @@ int DrSubmitDecodeUnit(PDECODE_UNIT decodeUnit)
 
 int ArInit(int audioConfiguration, POPUS_MULTISTREAM_CONFIGURATION opusConfig, void* context, int flags)
 {
-//    int err;
-//    SDL_AudioSpec want, have;
-//    
-//    if (SDL_InitSubSystem(SDL_INIT_AUDIO) < 0) {
-//        Log(LOG_E, @"Failed to initialize audio subsystem: %s\n", SDL_GetError());
-//        return -1;
-//    }
-//        
-//    SDL_zero(want);
-//    want.freq = opusConfig->sampleRate;
-//    want.format = AUDIO_S16;
-//    want.channels = opusConfig->channelCount;
-//    want.samples = opusConfig->samplesPerFrame;
-//
-//    audioDevice = SDL_OpenAudioDevice(NULL, 0, &want, &have, 0);
-//    if (audioDevice == 0) {
-//        Log(LOG_E, @"Failed to open audio device: %s\n", SDL_GetError());
-//        ArCleanup();
-//        return -1;
-//    }
-//    
-//    audioConfig = *opusConfig;
-//    audioFrameSize = opusConfig->samplesPerFrame * sizeof(short) * opusConfig->channelCount;
-//    audioBuffer = SDL_malloc(audioFrameSize);
-//    if (audioBuffer == NULL) {
-//        Log(LOG_E, @"Failed to allocate audio frame buffer");
-//        ArCleanup();
-//        return -1;
-//    }
-//    
-//    opusDecoder = opus_multistream_decoder_create(opusConfig->sampleRate,
-//                                                  opusConfig->channelCount,
-//                                                  opusConfig->streams,
-//                                                  opusConfig->coupledStreams,
-//                                                  opusConfig->mapping,
-//                                                  &err);
-//    if (opusDecoder == NULL) {
-//        Log(LOG_E, @"Failed to create Opus decoder");
-//        ArCleanup();
-//        return -1;
-//    }
-//    
-//    // Start playback
-//    SDL_PauseAudioDevice(audioDevice, 0);
-//    
-//    // Disable lowering volume of other audio streams (SDL sets AVAudioSessionCategoryOptionDuckOthers by default)
-//    [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryPlayback withOptions:AVAudioSessionCategoryOptionMixWithOthers error:nil];
+    int err;
+    NSError* audioError = nil;
+    
+    (void)audioConfiguration;
+    (void)context;
+    (void)flags;
+    
+    if (opusConfig == NULL) {
+        return -1;
+    }
+    
+    audioConfig = *opusConfig;
+    
+    opusDecoder = opus_multistream_decoder_create(opusConfig->sampleRate,
+                                                  opusConfig->channelCount,
+                                                  opusConfig->streams,
+                                                  opusConfig->coupledStreams,
+                                                  opusConfig->mapping,
+                                                  &err);
+    if (opusDecoder == NULL || err != OPUS_OK) {
+        [Log e: [NSString stringWithFormat:@"Failed to create Opus decoder: %d\n", err]];
+        ArCleanup();
+        return -1;
+    }
+    
+    audioQueue = dispatch_queue_create("com.moonlight.audio-playback", DISPATCH_QUEUE_SERIAL);
+    atomic_store(&queuedAudioBuffers, 0);
+    
+    audioFormat = [[AVAudioFormat alloc] initWithCommonFormat:AVAudioPCMFormatInt16
+                                                   sampleRate:opusConfig->sampleRate
+                                                     channels:opusConfig->channelCount
+                                                  interleaved:YES];
+    if (audioFormat == nil) {
+        [Log e: @"Failed to create audio format\n"];
+        ArCleanup();
+        return -1;
+    }
+    
+    audioEngine = [[AVAudioEngine alloc] init];
+    audioPlayer = [[AVAudioPlayerNode alloc] init];
+    [audioEngine attachNode:audioPlayer];
+    [audioEngine connect:audioPlayer to:audioEngine.mainMixerNode format:audioFormat];
+    
+#if !TARGET_OS_TV
+    AVAudioSession* session = [AVAudioSession sharedInstance];
+    if (![session setCategory:AVAudioSessionCategoryPlayback
+                  withOptions:AVAudioSessionCategoryOptionMixWithOthers
+                        error:&audioError]) {
+        [Log e: [NSString stringWithFormat:@"Failed to configure audio session: %s\n", audioError.localizedDescription.UTF8String]];
+        audioError = nil;
+    }
+    
+    if (![session setActive:YES error:&audioError]) {
+        [Log e: [NSString stringWithFormat:@"Failed to activate audio session: %s\n", audioError.localizedDescription.UTF8String]];
+        audioError = nil;
+    }
+#endif
+    
+    if (![audioEngine startAndReturnError:&audioError]) {
+        [Log e: [NSString stringWithFormat:@"Failed to start audio engine: %s\n", audioError.localizedDescription.UTF8String]];
+        ArCleanup();
+        return -1;
+    }
+    
+    [audioPlayer play];
     
     return 0;
 }
 
 void ArCleanup(void)
 {
-//    if (opusDecoder != NULL) {
-//        opus_multistream_decoder_destroy(opusDecoder);
-//        opusDecoder = NULL;
-//    }
-//    
-//    if (audioDevice != 0) {
-//        SDL_CloseAudioDevice(audioDevice);
-//        audioDevice = 0;
-//    }
-//    
-//    if (audioBuffer != NULL) {
-//        SDL_free(audioBuffer);
-//        audioBuffer = NULL;
-//    }
-//    
-//    SDL_QuitSubSystem(SDL_INIT_AUDIO);
+    if (audioPlayer != nil) {
+        [audioPlayer stop];
+        audioPlayer = nil;
+    }
+    
+    if (audioEngine != nil) {
+        [audioEngine stop];
+        [audioEngine reset];
+        audioEngine = nil;
+    }
+    
+    audioFormat = nil;
+    audioQueue = nil;
+    atomic_store(&queuedAudioBuffers, 0);
+    
+    if (opusDecoder != NULL) {
+        opus_multistream_decoder_destroy(opusDecoder);
+        opusDecoder = NULL;
+    }
 }
 
 void ArDecodeAndPlaySample(char* sampleData, int sampleLength)
 {
-//    int decodeLen;
-//    
-//    // Don't queue if there's already more than 30 ms of audio data waiting
-//    // in Moonlight's audio queue.
-//    if (LiGetPendingAudioDuration() > 30) {
-//        return;
-//    }
-//    
-//    decodeLen = opus_multistream_decode(opusDecoder, (unsigned char *)sampleData, sampleLength,
-//                                        (short*)audioBuffer, audioConfig.samplesPerFrame, 0);
-//    if (decodeLen > 0) {
-//        // Provide backpressure on the queue to ensure too many frames don't build up
-//        // in SDL's audio queue.
-//        while (SDL_GetQueuedAudioSize(audioDevice) / audioFrameSize > 10) {
-//            SDL_Delay(1);
-//        }
-//        
-//        if (SDL_QueueAudio(audioDevice,
-//                           audioBuffer,
-//                           sizeof(short) * decodeLen * audioConfig.channelCount) < 0) {
-//            Log(LOG_E, @"Failed to queue audio sample: %s\n", SDL_GetError());
-//        }
-//    }
+    int decodeLen;
+    
+    if (opusDecoder == NULL || audioPlayer == nil || audioFormat == nil || audioQueue == nil) {
+        return;
+    }
+    
+    // Don't queue if there's already more than 30 ms of audio data waiting
+    // in Moonlight's audio queue.
+    if (LiGetPendingAudioDuration() > 30) {
+        return;
+    }
+    
+    // Provide backpressure on the queue to ensure too many frames don't build up.
+    while (atomic_load(&queuedAudioBuffers) > 10) {
+        usleep(1000);
+    }
+    
+    AVAudioPCMBuffer* buffer = [[AVAudioPCMBuffer alloc] initWithPCMFormat:audioFormat
+                                                              frameCapacity:audioConfig.samplesPerFrame];
+    if (buffer == nil) {
+        [Log e: @"Failed to allocate audio PCM buffer\n"];
+        return;
+    }
+    
+    AudioBufferList* audioBufferList = buffer.mutableAudioBufferList;
+    if (audioBufferList == NULL || audioBufferList->mNumberBuffers == 0 || audioBufferList->mBuffers[0].mData == NULL) {
+        [Log e: @"Audio buffer list is invalid\n"];
+        return;
+    }
+    
+    decodeLen = opus_multistream_decode(opusDecoder,
+                                        (const unsigned char*)sampleData,
+                                        sampleLength,
+                                        (opus_int16*)audioBufferList->mBuffers[0].mData,
+                                        audioConfig.samplesPerFrame,
+                                        0);
+    if (decodeLen <= 0) {
+        if (decodeLen < 0) {
+            [Log e: [NSString stringWithFormat:@"Failed to decode Opus sample: %d\n", decodeLen]];
+        }
+        return;
+    }
+    
+    audioBufferList->mBuffers[0].mDataByteSize = sizeof(short) * decodeLen * audioConfig.channelCount;
+    buffer.frameLength = decodeLen;
+    
+    atomic_fetch_add(&queuedAudioBuffers, 1);
+    dispatch_async(audioQueue, ^{
+        [audioPlayer scheduleBuffer:buffer
+                            atTime:nil
+                           options:0
+                 completionHandler:^{
+            atomic_fetch_sub(&queuedAudioBuffers, 1);
+        }];
+        
+        if (!audioPlayer.isPlaying) {
+            [audioPlayer play];
+        }
+    });
 }
 
 void ClStageStarting(int stage)

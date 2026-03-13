@@ -398,7 +398,10 @@
 				DEVELOPMENT_TEAM = D59DHVRS87;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				HEADER_SEARCH_PATHS = "\"$(SRCROOT)/Submodules/moonlight-common-c/src\"";
+				HEADER_SEARCH_PATHS = (
+					"\"$(SRCROOT)/Submodules/moonlight-common-c/src\"",
+					"\"$(SRCROOT)/Submodules/opus/include\"",
+				);
 				INFOPLIST_FILE = "Moonlight-Swift/Info.plist";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -440,7 +443,10 @@
 				DEVELOPMENT_TEAM = D59DHVRS87;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				HEADER_SEARCH_PATHS = "\"$(SRCROOT)/Submodules/moonlight-common-c/src\"";
+				HEADER_SEARCH_PATHS = (
+					"\"$(SRCROOT)/Submodules/moonlight-common-c/src\"",
+					"\"$(SRCROOT)/Submodules/opus/include\"",
+				);
 				INFOPLIST_FILE = "Moonlight-Swift/Info.plist";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

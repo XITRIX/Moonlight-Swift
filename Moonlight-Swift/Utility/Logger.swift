@@ -5,7 +5,7 @@
 //  Created by Даниил Виноградов on 07.03.2026.
 //
 
-class Logger {
+class Logger: NSObject {
     nonisolated
     static let shared = Logger()
 
@@ -22,7 +22,8 @@ class Logger {
     }
 }
 
-enum Log {
+@objcMembers
+class Log: NSObject {
     nonisolated
     static func d(_ text: String) {
         Logger.shared.log(text, level: .debug)
