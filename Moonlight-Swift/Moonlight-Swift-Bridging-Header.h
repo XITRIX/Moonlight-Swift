@@ -59,3 +59,33 @@ NS_INLINE int32_t SurroundAudioInfoFromAudioConfiguration(int32_t configuration)
 NS_INLINE void MoonlightXMLFree(void *pointer) {
     xmlFree(pointer);
 }
+
+typedef NS_ENUM(int8_t, ButtonAction) {
+    ButtonActionPress        = BUTTON_ACTION_PRESS,
+    ButtonActionRelease       = BUTTON_ACTION_RELEASE,
+};
+
+typedef NS_ENUM(int32_t, MouseButton) {
+    MouseButtonLeft        = BUTTON_LEFT,
+    MouseButtonMiddle       = BUTTON_MIDDLE,
+    MouseButtonRight       = BUTTON_RIGHT,
+};
+
+typedef NS_OPTIONS(int32_t, ControllerButton) {
+    ControllerButtonA           = A_FLAG,
+    ControllerButtonB           = B_FLAG,
+    ControllerButtonX           = X_FLAG,
+    ControllerButtonY           = Y_FLAG,
+    ControllerButtonUp          = UP_FLAG,
+    ControllerButtonDown        = DOWN_FLAG,
+    ControllerButtonLeft        = LEFT_FLAG,
+    ControllerButtonRight       = RIGHT_FLAG,
+    ControllerButtonLeftBumper  = LB_FLAG,
+    ControllerButtonRightBumper = RB_FLAG,
+    ControllerButtonPlay        = PLAY_FLAG,
+    ControllerButtonBack        = BACK_FLAG,
+    ControllerButtonLeftStick   = LS_CLK_FLAG,
+    ControllerButtonRightStick  = RS_CLK_FLAG,
+    ControllerButtonMisc        = MISC_FLAG,
+    ControllerButtonSpecial     = SPECIAL_FLAG,
+};

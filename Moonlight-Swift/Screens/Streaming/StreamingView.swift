@@ -13,6 +13,8 @@ struct StreamingView: View {
     let app: TemporaryApp
 
     @Environment(\.dismiss) private var dismiss
+    @State private var selection = "Touch"
+    @State private var closeSessionPresented = false
 
     var body: some View {
         Group {
@@ -24,10 +26,32 @@ struct StreamingView: View {
             }
         }
         .toolbar {
-            Button(role: .close) {
-                dismiss()
+            ToolbarItem(placement: .topBarLeading) {
+                Picker("Controls", selection: $selection) {
+                    Image(systemName: "hand.draw").tag("Touch")
+                    Image(systemName: "keyboard").tag("Keyboard")
+                    Image(systemName: "gamecontroller").tag("Gamepad")
+                }
+                .pickerStyle(.segmented)
+                .frame(minWidth: 180, idealWidth: 200, maxWidth: 220)
+            }
+            .sharedBackgroundVisibility(.hidden)
+
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                Button(role: .close) {
+                    closeSessionPresented = true
+                }
+                .confirmationDialog("Close session", isPresented: $closeSessionPresented) {
+                    Button("Disconnect") {
+                        dismiss()
+                    }
+                    Button("Terminate", role: .destructive) {
+                        dismiss()
+                    }
+                }
             }
         }
+        .interactiveDismissDisabled(true)
     }
 }
 
@@ -113,12 +137,25 @@ struct StreamingScreenView: UIViewRepresentable {
         context.coordinator.streamManager = streamManager
         Task { await streamManager.start() }
 
+        // MARK: Pan recognizer
+        let panGestureRecognizer = UIPanGestureRecognizer()
+        panGestureRecognizer.addTarget(context.coordinator, action: #selector(Coordinator.panRecognizer(_:)))
+        view.addGestureRecognizer(panGestureRecognizer)
+
+        // MARK: Tap recognizer
+        let tapGestureRecognizer = UITapGestureRecognizer()
+        tapGestureRecognizer.addTarget(context.coordinator, action: #selector(Coordinator.tapRecognizer(_:)))
+        view.addGestureRecognizer(tapGestureRecognizer)
+
+        context.coordinator.controllerBridge.start()
+
         return view
     }
 
     func updateUIView(_ uiView: AVView, context: Context) {}
 
     static func dismantleUIView(_ uiView: AVView, coordinator: Coordinator) {
+        coordinator.controllerBridge.stop()
         coordinator.streamManager?.stopStream()
         coordinator.streamManager = nil
     }
@@ -128,7 +165,22 @@ struct StreamingScreenView: UIViewRepresentable {
     }
 
     class Coordinator {
+        fileprivate let controllerBridge: ControllerBridge = .init()
         fileprivate var streamManager: StreamManager?
+    }
+}
+
+extension StreamingScreenView.Coordinator {
+    @objc func panRecognizer(_ recognizer: UIPanGestureRecognizer) {
+        guard let view = recognizer.view else { return }
+        let translation = recognizer.translation(in: view)
+        recognizer.setTranslation(.zero, in: view)
+        LiSendMouseMoveEvent(Int16(translation.x), Int16(translation.y))
+    }
+
+    @objc func tapRecognizer(_ recognizer: UITapGestureRecognizer) {
+        LiSendMouseButtonEvent(ButtonAction.press.rawValue, MouseButton.left.rawValue)
+        LiSendMouseButtonEvent(ButtonAction.release.rawValue, MouseButton.left.rawValue)
     }
 }
 

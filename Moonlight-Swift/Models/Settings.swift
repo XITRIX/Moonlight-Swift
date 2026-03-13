@@ -19,7 +19,7 @@ class Settings {
     var enableHDR: Bool
     var touchMode: Bool
 
-    init(bitrate: Int = 50 * 1024,
+    init(bitrate: Int = 25 * 1024,
          framerate: Int = 60,
          height: Int = 1080,
          width: Int = 1920,
