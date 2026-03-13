@@ -9,25 +9,32 @@
 /* Begin PBXBuildFile section */
 		7CA35E962F5CD2D800C390C9 /* OpenSSL.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7CA35E952F5CD2D800C390C9 /* OpenSSL.xcframework */; };
 		7CA35E972F5CD2D800C390C9 /* OpenSSL.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 7CA35E952F5CD2D800C390C9 /* OpenSSL.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
-		7CA35E9B2F5CD87200C390C9 /* libmoonlight-common-c.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 7CA35E932F5CCE2600C390C9 /* libmoonlight-common-c.a */; platformFilters = (ios, tvos, xros, ); };
-		7CA35E9C2F5CD87200C390C9 /* libmoonlight-common-c.a in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 7CA35E932F5CCE2600C390C9 /* libmoonlight-common-c.a */; platformFilters = (ios, tvos, xros, ); settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
-		7CA35E9D2F5CD87600C390C9 /* libenet.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 7CA35E912F5CCE2600C390C9 /* libenet.a */; platformFilters = (ios, tvos, xros, ); };
+		D13999D92F642A6400847793 /* libmoonlight-common-c.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D13999CE2F6428FD00847793 /* libmoonlight-common-c.a */; };
+		D13999DA2F642A6700847793 /* libenet.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D13999CC2F6428FD00847793 /* libenet.a */; };
+		D13999DB2F642A6A00847793 /* libopus.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D13999D82F64290500847793 /* libopus.a */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		7CA35E902F5CCE2600C390C9 /* PBXContainerItemProxy */ = {
+		D13999CB2F6428FD00847793 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
-			containerPortal = 7CA35E882F5CCE2600C390C9 /* moonlight-common-c.xcodeproj */;
+			containerPortal = D13999C32F6428FD00847793 /* moonlight-common-c.xcodeproj */;
 			proxyType = 2;
-			remoteGlobalIDString = 615A59C8604F4C9EA751F63A;
+			remoteGlobalIDString = 7E0FEF64E8EF4D67ADC09CA1;
 			remoteInfo = enet;
 		};
-		7CA35E922F5CCE2600C390C9 /* PBXContainerItemProxy */ = {
+		D13999CD2F6428FD00847793 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
-			containerPortal = 7CA35E882F5CCE2600C390C9 /* moonlight-common-c.xcodeproj */;
+			containerPortal = D13999C32F6428FD00847793 /* moonlight-common-c.xcodeproj */;
 			proxyType = 2;
-			remoteGlobalIDString = DEDE1AB1D1C845B481C5BD9C;
+			remoteGlobalIDString = BEA6DE4DBD5E4BA6887FA392;
 			remoteInfo = "moonlight-common-c";
+		};
+		D13999D72F64290500847793 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D13999CF2F64290500847793 /* Opus.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = B373534E8B094D2FA2821555;
+			remoteInfo = opus;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -39,7 +46,6 @@
 			dstSubfolderSpec = 10;
 			files = (
 				7CA35E972F5CD2D800C390C9 /* OpenSSL.xcframework in Embed Frameworks */,
-				7CA35E9C2F5CD87200C390C9 /* libmoonlight-common-c.a in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -48,8 +54,9 @@
 
 /* Begin PBXFileReference section */
 		7CA35E6F2F5CC4D700C390C9 /* Moonlight-Swift.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Moonlight-Swift.app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		7CA35E882F5CCE2600C390C9 /* moonlight-common-c.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = "moonlight-common-c.xcodeproj"; path = "Submodules/moonlight-common-c-xcode/moonlight-common-c.xcodeproj"; sourceTree = "<group>"; };
 		7CA35E952F5CD2D800C390C9 /* OpenSSL.xcframework */ = {isa = PBXFileReference; expectedSignature = "AppleDeveloperProgram:67RAULRX93:Marcin Krzyzanowski"; lastKnownFileType = wrapper.xcframework; name = OpenSSL.xcframework; path = Submodules/OpenSSL.xcframework; sourceTree = "<group>"; };
+		D13999C32F6428FD00847793 /* moonlight-common-c.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = "moonlight-common-c.xcodeproj"; path = "Submodules/xcode/moonlight-common-c/moonlight-common-c.xcodeproj"; sourceTree = SOURCE_ROOT; };
+		D13999CF2F64290500847793 /* Opus.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = Opus.xcodeproj; path = Submodules/xcode/opus/Opus.xcodeproj; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -79,9 +86,10 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D13999D92F642A6400847793 /* libmoonlight-common-c.a in Frameworks */,
 				7CA35E962F5CD2D800C390C9 /* OpenSSL.xcframework in Frameworks */,
-				7CA35E9B2F5CD87200C390C9 /* libmoonlight-common-c.a in Frameworks */,
-				7CA35E9D2F5CD87600C390C9 /* libenet.a in Frameworks */,
+				D13999DB2F642A6A00847793 /* libopus.a in Frameworks */,
+				D13999DA2F642A6700847793 /* libenet.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -91,7 +99,7 @@
 		7CA35E662F5CC4D700C390C9 = {
 			isa = PBXGroup;
 			children = (
-				7CA35E882F5CCE2600C390C9 /* moonlight-common-c.xcodeproj */,
+				D13999C22F6428EB00847793 /* Thirdparty */,
 				7CA35E712F5CC4D700C390C9 /* Moonlight-Swift */,
 				7CA35E942F5CD2D800C390C9 /* Frameworks */,
 				7CA35E702F5CC4D700C390C9 /* Products */,
@@ -106,21 +114,38 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		7CA35E892F5CCE2600C390C9 /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				7CA35E912F5CCE2600C390C9 /* libenet.a */,
-				7CA35E932F5CCE2600C390C9 /* libmoonlight-common-c.a */,
-			);
-			name = Products;
-			sourceTree = "<group>";
-		};
 		7CA35E942F5CD2D800C390C9 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
 				7CA35E952F5CD2D800C390C9 /* OpenSSL.xcframework */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		D13999C22F6428EB00847793 /* Thirdparty */ = {
+			isa = PBXGroup;
+			children = (
+				D13999CF2F64290500847793 /* Opus.xcodeproj */,
+				D13999C32F6428FD00847793 /* moonlight-common-c.xcodeproj */,
+			);
+			path = Thirdparty;
+			sourceTree = "<group>";
+		};
+		D13999C42F6428FD00847793 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				D13999CC2F6428FD00847793 /* libenet.a */,
+				D13999CE2F6428FD00847793 /* libmoonlight-common-c.a */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		D13999D02F64290500847793 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				D13999D82F64290500847793 /* libopus.a */,
+			);
+			name = Products;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -181,8 +206,12 @@
 			projectDirPath = "";
 			projectReferences = (
 				{
-					ProductGroup = 7CA35E892F5CCE2600C390C9 /* Products */;
-					ProjectRef = 7CA35E882F5CCE2600C390C9 /* moonlight-common-c.xcodeproj */;
+					ProductGroup = D13999C42F6428FD00847793 /* Products */;
+					ProjectRef = D13999C32F6428FD00847793 /* moonlight-common-c.xcodeproj */;
+				},
+				{
+					ProductGroup = D13999D02F64290500847793 /* Products */;
+					ProjectRef = D13999CF2F64290500847793 /* Opus.xcodeproj */;
 				},
 			);
 			projectRoot = "";
@@ -193,18 +222,25 @@
 /* End PBXProject section */
 
 /* Begin PBXReferenceProxy section */
-		7CA35E912F5CCE2600C390C9 /* libenet.a */ = {
+		D13999CC2F6428FD00847793 /* libenet.a */ = {
 			isa = PBXReferenceProxy;
 			fileType = archive.ar;
 			path = libenet.a;
-			remoteRef = 7CA35E902F5CCE2600C390C9 /* PBXContainerItemProxy */;
+			remoteRef = D13999CB2F6428FD00847793 /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
-		7CA35E932F5CCE2600C390C9 /* libmoonlight-common-c.a */ = {
+		D13999CE2F6428FD00847793 /* libmoonlight-common-c.a */ = {
 			isa = PBXReferenceProxy;
 			fileType = archive.ar;
 			path = "libmoonlight-common-c.a";
-			remoteRef = 7CA35E922F5CCE2600C390C9 /* PBXContainerItemProxy */;
+			remoteRef = D13999CD2F6428FD00847793 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		D13999D82F64290500847793 /* libopus.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libopus.a;
+			remoteRef = D13999D72F64290500847793 /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
 /* End PBXReferenceProxy section */
