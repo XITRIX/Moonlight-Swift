@@ -9,11 +9,19 @@ import AVFoundation
 import SwiftUI
 import VideoToolbox
 
+extension StreamingView {
+    enum ImputMode {
+        case touch
+        case keyboard
+        case gamepad
+    }
+}
+
 struct StreamingView: View {
     let app: TemporaryApp
 
     @Environment(\.dismiss) private var dismiss
-    @State private var selection = "Touch"
+    @State private var inputMode: ImputMode = .touch
     @State private var closeSessionPresented = false
 
     var body: some View {
@@ -25,12 +33,15 @@ struct StreamingView: View {
                 Text("Failed to ferch config")
             }
         }
+        .overlay {
+            inputOverlay
+        }
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
-                Picker("Controls", selection: $selection) {
-                    Image(systemName: "hand.draw").tag("Touch")
-                    Image(systemName: "keyboard").tag("Keyboard")
-                    Image(systemName: "gamecontroller").tag("Gamepad")
+                Picker("Controls", selection: $inputMode) {
+                    Image(systemName: "hand.draw").tag(ImputMode.touch)
+                    Image(systemName: "keyboard").tag(ImputMode.keyboard)
+                    Image(systemName: "gamecontroller").tag(ImputMode.gamepad)
                 }
                 .pickerStyle(.segmented)
                 .frame(minWidth: 180, idealWidth: 200, maxWidth: 220)
@@ -56,6 +67,18 @@ struct StreamingView: View {
 }
 
 private extension StreamingView {
+    @ViewBuilder
+    var inputOverlay: some View {
+        switch inputMode {
+        case .touch:
+            EmptyView()
+        case .keyboard:
+            KeyboardInputOverlayView()
+        case .gamepad:
+            EmptyView()
+        }
+    }
+
     func prepareToStream() -> StreamConfiguration? {
         guard let host = app.host.activeAddress,
               let serverCert = app.host.serverCert
