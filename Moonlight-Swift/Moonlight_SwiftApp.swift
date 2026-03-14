@@ -16,7 +16,10 @@ struct Moonlight_SwiftApp: App {
     init() {
         do {
             let container = try ModelContainer(for: TemporaryHost.self)
-            let discoveryManager = DiscoveryManager(modelContainer: container)
+            let discoveryManager = DiscoveryManager(
+                modelContainer: container,
+                isEnabled: !ProcessInfo.isRunningForXcodePreview
+            )
 
             self.container = container
             self.discoveryManager = discoveryManager
@@ -33,5 +36,13 @@ struct Moonlight_SwiftApp: App {
             .environment(discoveryManager)
         }
         .modelContainer(container)
+    }
+}
+
+private extension ProcessInfo {
+    static var isRunningForXcodePreview: Bool {
+        let environment = processInfo.environment
+        return environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
+            || environment["XCODE_RUNNING_FOR_PLAYGROUNDS"] == "1"
     }
 }

@@ -12,8 +12,9 @@ import SwiftData
 class DiscoveryManager {
     var hosts: [TemporaryHost] = []
 
-    init(modelContainer: ModelContainer) {
+    init(modelContainer: ModelContainer, isEnabled: Bool = true) {
         container = modelContainer
+        self.isEnabled = isEnabled
 
         let loadedHosts = loadHosts()
         for host in loadedHosts {
@@ -25,6 +26,9 @@ class DiscoveryManager {
         mdnsMan.callback = { [weak self] host in
             Task { await self?.updateHost(host) }
         }
+
+        guard isEnabled else { return }
+
         CryptoManager.generateKeyPairUsingSSL()
         cert = CryptoManager.readCertFromFile()
     }
@@ -39,10 +43,12 @@ class DiscoveryManager {
     private let uniqueId: String = IdManager.uniqueId
     private var cert: Data = .init()
     private var shouldDiscover: Bool = false
+    private let isEnabled: Bool
 }
 
 extension DiscoveryManager {
     func startDiscovery() {
+        guard isEnabled else { return }
         guard !shouldDiscover else { return }
 
         Log.i("Start discovery")
@@ -57,6 +63,7 @@ extension DiscoveryManager {
     }
 
     func stopDiscovery() {
+        guard isEnabled else { return }
         guard shouldDiscover else { return }
 
         Log.i("Stopping discovery")
@@ -66,6 +73,7 @@ extension DiscoveryManager {
     }
 
     func stopDiscovery() async {
+        guard isEnabled else { return }
         Log.i("Stopping discovery and waiting for workers to stop")
 
         if shouldDiscover {
