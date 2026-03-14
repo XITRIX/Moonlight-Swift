@@ -60,6 +60,7 @@ final class VideoDecoderRenderer: NSObject {
 
     private var displayLink: CADisplayLink?
     private let framePacing: Bool
+    private var needsIDRFrameAfterFlush = false
 
     private let minimumStartCodeSize = 3
     private let nalLengthPrefixSize = 4
@@ -80,6 +81,11 @@ final class VideoDecoderRenderer: NSObject {
         self.framePacing = useFramePacing
         super.init()
         reinitializeDisplayLayer()
+        registerForLifecycleNotifications()
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 
     private func reinitializeDisplayLayer() {
@@ -109,6 +115,43 @@ final class VideoDecoderRenderer: NSObject {
 
         displayLayer = view.avLayer
         formatDesc = nil
+    }
+
+    private func registerForLifecycleNotifications() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleApplicationDidEnterBackground),
+            name: UIApplication.didEnterBackgroundNotification,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleApplicationDidBecomeActive),
+            name: UIApplication.didBecomeActiveNotification,
+            object: nil
+        )
+    }
+
+    @objc
+    private func handleApplicationDidEnterBackground() {
+        recoverDisplayLayer(reason: "app entered background")
+    }
+
+    @objc
+    private func handleApplicationDidBecomeActive() {
+        if needsIDRFrameAfterFlush || displayLayer.status == .failed || displayLayer.requiresFlushToResumeDecoding {
+            recoverDisplayLayer(reason: "app became active")
+        }
+    }
+
+    private func recoverDisplayLayer(reason: String) {
+        Log.i("Recovering display layer: \(reason)")
+        displayLayer.flush()
+        displayLayer.isHidden = true
+        formatDesc = nil
+        parameterSetBuffers.removeAll()
+        needsIDRFrameAfterFlush = true
+        LiRequestIdrFrame()
     }
 
     func setup(videoFormat: Int32, width: Int32, height: Int32, frameRate: Int32) {
@@ -614,9 +657,20 @@ final class VideoDecoderRenderer: NSObject {
             return DR_NEED_IDR
         }
 
+        if needsIDRFrameAfterFlush && du.pointee.frameType != FRAME_TYPE_IDR {
+            freeInputIfNeeded()
+            return DR_NEED_IDR
+        }
+
+        if displayLayer.requiresFlushToResumeDecoding {
+            recoverDisplayLayer(reason: "decoder requires flush before enqueue")
+            freeInputIfNeeded()
+            return DR_NEED_IDR
+        }
+
         if displayLayer.status == .failed {
             Log.e("Display layer rendering failed: \(String(describing: displayLayer.error))")
-            reinitializeDisplayLayer()
+            recoverDisplayLayer(reason: "display layer failed")
             freeInputIfNeeded()
             return DR_NEED_IDR
         }
@@ -711,6 +765,7 @@ final class VideoDecoderRenderer: NSObject {
         displayLayer.enqueue(sampleBuffer)
 
         if du.pointee.frameType == FRAME_TYPE_IDR {
+            needsIDRFrameAfterFlush = false
             displayLayer.isHidden = false
             callbacks?.videoContentShown()
         }

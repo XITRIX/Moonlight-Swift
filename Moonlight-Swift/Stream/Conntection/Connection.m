@@ -53,6 +53,70 @@ static atomic_int queuedAudioBuffers;
 
 static VideoDecoderRenderer* renderer;
 
+static void ReactivateAudioSession(void)
+{
+#if !TARGET_OS_TV
+    NSError* audioError = nil;
+    AVAudioSession* session = [AVAudioSession sharedInstance];
+    if (![session setCategory:AVAudioSessionCategoryPlayback
+                  withOptions:AVAudioSessionCategoryOptionMixWithOthers
+                        error:&audioError]) {
+        [Log e: [NSString stringWithFormat:@"Failed to reconfigure audio session: %s\n", audioError.localizedDescription.UTF8String]];
+        audioError = nil;
+    }
+
+    if (![session setActive:YES error:&audioError]) {
+        [Log e: [NSString stringWithFormat:@"Failed to reactivate audio session: %s\n", audioError.localizedDescription.UTF8String]];
+    }
+#endif
+}
+
+static BOOL ConfigureAudioPlaybackGraph(void)
+{
+    NSError* audioError = nil;
+
+    audioEngine = [[AVAudioEngine alloc] init];
+    audioPlayer = [[AVAudioPlayerNode alloc] init];
+    [audioEngine attachNode:audioPlayer];
+    [audioEngine connect:audioPlayer to:audioEngine.mainMixerNode format:audioFormat];
+
+    ReactivateAudioSession();
+
+    if (![audioEngine startAndReturnError:&audioError]) {
+        [Log e: [NSString stringWithFormat:@"Failed to start audio engine: %s\n", audioError.localizedDescription.UTF8String]];
+        audioPlayer = nil;
+        audioEngine = nil;
+        return NO;
+    }
+
+    [audioPlayer play];
+    return YES;
+}
+
+static void ResetAudioPlaybackState(BOOL rebuildGraph)
+{
+    if (audioPlayer == nil || audioEngine == nil || audioQueue == nil) {
+        return;
+    }
+
+    dispatch_async(audioQueue, ^{
+        AVAudioPlayerNode* oldPlayer = audioPlayer;
+        AVAudioEngine* oldEngine = audioEngine;
+
+        [oldPlayer stop];
+        [oldPlayer reset];
+        [oldEngine stop];
+        [oldEngine reset];
+        atomic_store(&queuedAudioBuffers, 0);
+
+        if (rebuildGraph) {
+            audioPlayer = nil;
+            audioEngine = nil;
+            ConfigureAudioPlaybackGraph();
+        }
+    });
+}
+
 int DrDecoderSetup(int videoFormat, int width, int height, int redrawRate, void* context, int drFlags)
 {
     [renderer setupWithVideoFormat:videoFormat width:width height:height frameRate:redrawRate];
@@ -235,11 +299,6 @@ int ArInit(int audioConfiguration, POPUS_MULTISTREAM_CONFIGURATION opusConfig, v
         return -1;
     }
     
-    audioEngine = [[AVAudioEngine alloc] init];
-    audioPlayer = [[AVAudioPlayerNode alloc] init];
-    [audioEngine attachNode:audioPlayer];
-    [audioEngine connect:audioPlayer to:audioEngine.mainMixerNode format:audioFormat];
-    
 #if !TARGET_OS_TV
     AVAudioSession* session = [AVAudioSession sharedInstance];
     if (![session setCategory:AVAudioSessionCategoryPlayback
@@ -255,20 +314,18 @@ int ArInit(int audioConfiguration, POPUS_MULTISTREAM_CONFIGURATION opusConfig, v
     }
 #endif
     
-    if (![audioEngine startAndReturnError:&audioError]) {
-        [Log e: [NSString stringWithFormat:@"Failed to start audio engine: %s\n", audioError.localizedDescription.UTF8String]];
+    if (!ConfigureAudioPlaybackGraph()) {
         ArCleanup();
         return -1;
     }
-    
-    [audioPlayer play];
-    
+
     return 0;
 }
 
 void ArCleanup(void)
 {
     if (audioPlayer != nil) {
+        [audioPlayer reset];
         [audioPlayer stop];
         audioPlayer = nil;
     }
@@ -303,9 +360,11 @@ void ArDecodeAndPlaySample(char* sampleData, int sampleLength)
         return;
     }
     
-    // Provide backpressure on the queue to ensure too many frames don't build up.
-    while (atomic_load(&queuedAudioBuffers) > 10) {
-        usleep(1000);
+    // Audio is real-time. If the local player queue is already backed up,
+    // drop this sample instead of blocking the decoder thread and letting
+    // Moonlight's upstream audio packet queue overflow.
+    if (atomic_load(&queuedAudioBuffers) > 10) {
+        return;
     }
     
     AVAudioPCMBuffer* buffer = [[AVAudioPCMBuffer alloc] initWithPCMFormat:audioFormat
@@ -419,6 +478,39 @@ void ClSetControllerLED(uint16_t controllerNumber, uint8_t r, uint8_t g, uint8_t
     [_callbacks setControllerLed:controllerNumber r:r g:g b:b];
 }
 
+-(void) handleAudioSessionInterruption:(NSNotification*)notification
+{
+#if !TARGET_OS_TV
+    NSNumber* typeValue = notification.userInfo[AVAudioSessionInterruptionTypeKey];
+    if (typeValue.unsignedIntegerValue == AVAudioSessionInterruptionTypeBegan) {
+        ResetAudioPlaybackState(NO);
+    }
+    else {
+        ResetAudioPlaybackState(YES);
+    }
+#else
+    (void)notification;
+#endif
+}
+
+-(void) handleAudioSessionRouteChange:(NSNotification*)notification
+{
+    (void)notification;
+    ResetAudioPlaybackState(YES);
+}
+
+-(void) handleAudioSessionMediaServicesReset:(NSNotification*)notification
+{
+    (void)notification;
+    ResetAudioPlaybackState(YES);
+}
+
+-(void) handleAudioEngineConfigurationChange:(NSNotification*)notification
+{
+    (void)notification;
+    ResetAudioPlaybackState(YES);
+}
+
 -(void) terminate
 {
     // Interrupt any action blocking LiStartConnection(). This is
@@ -435,6 +527,11 @@ void ClSetControllerLED(uint16_t controllerNumber, uint8_t r, uint8_t g, uint8_t
         LiStopConnection();
         [initLock unlock];
     });
+}
+
+-(void) dealloc
+{
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
 -(id) initWithConfig:(StreamConfiguration*)config renderer:(VideoDecoderRenderer*)myRenderer connectionCallbacks:(id<ConnectionCallbacks>)callbacks
@@ -482,6 +579,23 @@ void ClSetControllerLED(uint16_t controllerNumber, uint8_t r, uint8_t g, uint8_t
 
     renderer = myRenderer;
     _callbacks = callbacks;
+
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(handleAudioSessionInterruption:)
+                                                 name:AVAudioSessionInterruptionNotification
+                                               object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(handleAudioSessionRouteChange:)
+                                                 name:AVAudioSessionRouteChangeNotification
+                                               object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(handleAudioSessionMediaServicesReset:)
+                                                 name:AVAudioSessionMediaServicesWereResetNotification
+                                               object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(handleAudioEngineConfigurationChange:)
+                                                 name:AVAudioEngineConfigurationChangeNotification
+                                               object:nil];
 
     LiInitializeStreamConfiguration(&_streamConfig);
     _streamConfig.width = config.width;
