@@ -6,17 +6,10 @@
 //
 
 import SwiftUI
+import SwiftData
 
-//@Observable
-//class DevicesListViewModel {
-//    init() {
-//        let manager = DiscoveryManager(hosts: [], andCallback: <#T##(any DiscoveryCallback)!#>)
-//    }
-//}
-
-struct DevicesListView: View {
+struct HostsListView: View {
     @Environment(DiscoveryManager.self) var discoveryManager
-//    @State private var viewModel: DevicesListViewModel = .init()
 
     var body: some View {
         let hosts = discoveryManager.hosts
@@ -28,7 +21,7 @@ struct DevicesListView: View {
                 {
                     Section {
                         ForEach(hosts) { host in
-                            HostListView(host)
+                            HostItemView(host)
                         }
                     } header: {
                         Text(state.headerTitle)
@@ -52,6 +45,27 @@ struct DevicesListView: View {
             discoveryManager.stopDiscovery()
         }
         .navigationTitle("Moonlight")
+        .toolbarTitleDisplayMode(.inlineLarge)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+
+                } label: {
+                    Image(systemName: "plus")
+                        .foregroundStyle(.white)
+                }
+                .buttonStyle(.borderedProminent)
+            }
+
+            ToolbarItemGroup(placement: .bottomBar) {
+                Spacer()
+                NavigationLink {
+                    SettingsView()
+                } label: {
+                    Image(systemName: "gearshape.fill")
+                }
+            }
+        }
     }
 }
 
@@ -75,5 +89,8 @@ extension Equatable {
 }
 
 #Preview {
-    DevicesListView()
+    NavigationStack {
+        HostsListView()
+    }
+    .environment(DiscoveryManager(modelContainer: try! ModelContainer(for: TemporaryHost.self), isEnabled: false))
 }

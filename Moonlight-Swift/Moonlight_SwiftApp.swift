@@ -10,12 +10,14 @@ import SwiftData
 
 @main
 struct Moonlight_SwiftApp: App {
-    @State var container: ModelContainer
-    @State var discoveryManager: DiscoveryManager
+    @State private var container: ModelContainer
+    @State private var discoveryManager: DiscoveryManager
+    @State private var settings: Settings
 
     init() {
         do {
-            let container = try ModelContainer(for: TemporaryHost.self)
+            let container = try ModelContainer(for: TemporaryHost.self, Settings.self)
+            let settings = Self.loadOrCreateSettings(in: container.mainContext)
             let discoveryManager = DiscoveryManager(
                 modelContainer: container,
                 isEnabled: !ProcessInfo.isRunningForXcodePreview
@@ -23,6 +25,7 @@ struct Moonlight_SwiftApp: App {
 
             self.container = container
             self.discoveryManager = discoveryManager
+            self.settings = settings
         } catch {
             fatalError("Failed to create ModelContainer: \(error)")
         }
@@ -31,11 +34,27 @@ struct Moonlight_SwiftApp: App {
     var body: some Scene {
         WindowGroup {
             NavigationStack {
-                DevicesListView()
+                HostsListView()
             }
             .environment(discoveryManager)
+            .environment(settings)
         }
         .modelContainer(container)
+    }
+}
+
+private extension Moonlight_SwiftApp {
+    static func loadOrCreateSettings(in context: ModelContext) -> Settings {
+        let descriptor = FetchDescriptor<Settings>()
+
+        if let settings = try? context.fetch(descriptor).first {
+            return settings
+        }
+
+        let settings = Settings()
+        context.insert(settings)
+        try? context.save()
+        return settings
     }
 }
 

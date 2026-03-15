@@ -8,7 +8,7 @@
 import UIKit
 
 class StreamManager {
-    init(config: StreamConfiguration, renderView: AVView, connectionCallbacks: ConnectionCallbacks) {
+    init(config: StreamConfiguration, renderView: AVView, connectionCallbacks: ConnectionCallbacks?) {
         self.config = config
         self.renderView = renderView
         self.callbacks = connectionCallbacks
@@ -96,6 +96,10 @@ extension StreamManager {
 
     func getStatsOverlayText() -> String {
         "To Implement"
+    }
+
+    func setConnectionCallbacks(_ callbacks: ConnectionCallbacks) {
+        self.callbacks = callbacks
     }
 }
 

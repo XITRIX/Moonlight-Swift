@@ -1,5 +1,5 @@
 //
-//  HostListView.swift
+//  HostItemView.swift
 //  Moonlight-Swift
 //
 //  Created by Даниил Виноградов on 10.03.2026.
@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct HostListView: View {
+struct HostItemView: View {
     var host: TemporaryHost
     @Environment(DiscoveryManager.self) var discMan
 
@@ -47,7 +47,7 @@ struct HostListView: View {
 }
 
 // MARK: Views
-private extension HostListView {
+private extension HostItemView {
     @ViewBuilder
     var bodyLabel: some View {
         HStack {
@@ -83,7 +83,7 @@ private extension HostListView {
 }
 
 // MARK: Actions
-private extension HostListView {
+private extension HostItemView {
     func onClick() async {
         guard host.pairState == .unpaired,
             let hMan = HttpManager(host: host)

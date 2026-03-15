@@ -206,6 +206,14 @@ extension HttpManager {
         return createRequestFromString(urlString, timeout: Self.LONG_TIMEOUT_SEC)
     }
 
+    func newQuitAppRequest() async throws -> URLRequest? {
+        guard await ensureHttpsUrlPopulated(fastFail: false), let baseHTTPSURL
+        else { return nil }
+
+        let urlString = String(format: "%@/cancel?uniqueid=%@", baseHTTPSURL, uniqueID)
+        return createRequestFromString(urlString, timeout: Self.LONG_TIMEOUT_SEC)
+    }
+
     func newPairRequest(salt: Data, clientCert: Data) -> URLRequest {
         let urlString = String(format: "%@/pair?uniqueid=%@&devicename=%@&updateState=1&phrase=getservercert&salt=%@&clientcert=%@",
                                baseHTTPURL, uniqueID, deviceName, Utils.bytesToHex(salt), Utils.bytesToHex(clientCert))

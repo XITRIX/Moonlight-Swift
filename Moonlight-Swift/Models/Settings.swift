@@ -13,14 +13,16 @@ class Settings {
     var framerate: Int
     var height: Int
     var width: Int
-    var audioConfig: AudioConfiguration
-    var preferredCodec: Codec
+    private var resolutionPresetRawValue: String
+    private var audioConfigRawValue: Int32
+    private var preferredCodecRawValue: String
     var playAidioOnPC: Bool
     var enableHDR: Bool
     var touchMode: Bool
 
     init(bitrate: Int = 25 * 1024,
          framerate: Int = 60,
+         resolutionPreset: Resolution = .p1080,
          height: Int = 1080,
          width: Int = 1920,
          audioConfig: AudioConfiguration = .stereo,
@@ -33,8 +35,9 @@ class Settings {
         self.framerate = framerate
         self.height = height
         self.width = width
-        self.audioConfig = audioConfig
-        self.preferredCodec = preferredCodec
+        self.resolutionPresetRawValue = resolutionPreset.rawValue
+        self.audioConfigRawValue = audioConfig.rawValue
+        self.preferredCodecRawValue = preferredCodec.rawValue
         self.playAidioOnPC = playAidioOnPC
         self.enableHDR = enableHDR
         self.touchMode = touchMode
@@ -42,13 +45,63 @@ class Settings {
 }
 
 extension Settings {
+    var resolutionPreset: Resolution {
+        get { Resolution(rawValue: resolutionPresetRawValue) ?? .p1080 }
+        set { resolutionPresetRawValue = newValue.rawValue }
+    }
+
+    var audioConfig: AudioConfiguration {
+        get { AudioConfiguration(rawValue: audioConfigRawValue) ?? .stereo }
+        set { audioConfigRawValue = newValue.rawValue }
+    }
+
+    var preferredCodec: Codec {
+        get { Codec(rawValue: preferredCodecRawValue) ?? .auto }
+        set { preferredCodecRawValue = newValue.rawValue }
+    }
+}
+
+extension Settings {
     nonisolated
-    enum Codec: Identifiable, Codable {
+    enum Codec: String, Identifiable, Codable {
         var id: Self { self }
         case auto
         case h264
         case hevc
         case av1
+    }
+}
+
+extension Settings {
+    nonisolated
+    enum Resolution: String, Identifiable, Codable, Hashable {
+        var id: Self { self }
+        case p360
+        case p720
+        case p1080
+        case p4k
+        case safeArea
+        case native
+        case custom
+    }
+
+    var resolution: (width: Int, height: Int)? {
+        switch resolutionPreset {
+        case .p360:
+            return (width: 480, height: 360)
+        case .p720:
+            return (width: 1280, height: 720)
+        case .p1080:
+            return (width: 480, height: 360)
+        case .p4k:
+            return (width: 3840, height: 2160)
+        case .safeArea:
+            return nil
+        case .native:
+            return nil
+        case .custom:
+            return (width: width, height: height)
+        }
     }
 }
 

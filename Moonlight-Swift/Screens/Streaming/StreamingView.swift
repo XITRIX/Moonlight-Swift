@@ -7,6 +7,7 @@
 
 import AVFoundation
 import SwiftUI
+import UIKit
 import VideoToolbox
 
 extension StreamingView {
@@ -21,8 +22,11 @@ struct StreamingView: View {
     let app: TemporaryApp
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(Settings.self) private var settings
+    
     @State private var inputMode: ImputMode = .touch
     @State private var closeSessionPresented = false
+    @State private var terminating: Bool = false
 
     var body: some View {
         Group {
@@ -52,12 +56,19 @@ struct StreamingView: View {
                 Button(role: .close) {
                     closeSessionPresented = true
                 }
+                .disabled(terminating)
                 .confirmationDialog("Close session", isPresented: $closeSessionPresented) {
                     Button("Disconnect") {
                         dismiss()
                     }
                     Button("Terminate", role: .destructive) {
-                        dismiss()
+                        Task {
+                            terminating = true
+                            defer { dismiss() }
+                            guard let hMan = HttpManager(host: app.host) else { return }
+                            let quitResponse = HttpResponse()
+                            try await hMan.executeRequest(.init(for: quitResponse, with: hMan.newQuitAppRequest()))
+                        }
                     }
                 }
             }
@@ -69,13 +80,16 @@ struct StreamingView: View {
 private extension StreamingView {
     @ViewBuilder
     var inputOverlay: some View {
-        switch inputMode {
-        case .touch:
-            EmptyView()
-        case .keyboard:
-            KeyboardInputOverlayView()
-        case .gamepad:
-            EmptyView()
+        ZStack {
+            switch inputMode {
+            case .touch:
+                TouchInputOverlayView()
+            case .keyboard:
+                TouchInputOverlayView()
+                KeyboardInputOverlayView()
+            case .gamepad:
+                EmptyView()
+            }
         }
     }
 
@@ -88,12 +102,26 @@ private extension StreamingView {
         let appID = app.id
         let appName = app.name
 
-        let settings = Settings()
         let framerate = settings.framerate
 
         let bitrate = settings.bitrate
-        let width = settings.width
-        let height = settings.height
+
+        let width: Int
+        let height: Int
+
+        if let resolution = settings.resolution {
+            (width, height) = resolution
+        } else {
+            if settings.resolutionPreset == .native,
+               let nativeResolution = currentScreenResolution()
+            {
+                (width, height) = nativeResolution
+            } else {
+                width = settings.width
+                height = settings.height
+            }
+        }
+
         let playAidioOnPC = settings.playAidioOnPC
         let audioConfig = settings.audioConfig
 
@@ -148,39 +176,48 @@ private extension StreamingView {
                                    useFramePacing: true,
                                    serverCert: serverCert)
     }
+
+    func currentScreenResolution() -> (width: Int, height: Int)? {
+        let screen = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .filter { $0.activationState == .foregroundActive }
+            .first?
+            .screen
+
+        guard let screen else {
+            return nil
+        }
+
+        let nativeBounds = screen.nativeBounds
+        let width = max(nativeBounds.width, nativeBounds.height)
+        let height = min(nativeBounds.width, nativeBounds.height)
+        return (width: Int(width), height: Int(height))
+    }
 }
 
 struct StreamingScreenView: UIViewRepresentable {
     let config: StreamConfiguration
 
-    func makeUIView(context: Context) -> AVView {
+    func makeUIView(context: Context) -> UIView {
         let view = AVView()
 
         let streamManager: StreamManager = .init(config: config, renderView: view, connectionCallbacks: context.coordinator)
         context.coordinator.streamManager = streamManager
         Task { await streamManager.start() }
 
-        // MARK: Pan recognizer
-        let panGestureRecognizer = UIPanGestureRecognizer()
-        panGestureRecognizer.addTarget(context.coordinator, action: #selector(Coordinator.panRecognizer(_:)))
-        view.addGestureRecognizer(panGestureRecognizer)
-
-        // MARK: Tap recognizer
-        let tapGestureRecognizer = UITapGestureRecognizer()
-        tapGestureRecognizer.addTarget(context.coordinator, action: #selector(Coordinator.tapRecognizer(_:)))
-        view.addGestureRecognizer(tapGestureRecognizer)
-
         context.coordinator.controllerBridge.start()
+        Air.play(view)
 
         return view
     }
 
-    func updateUIView(_ uiView: AVView, context: Context) {}
+    func updateUIView(_ uiView: UIView, context: Context) {}
 
-    static func dismantleUIView(_ uiView: AVView, coordinator: Coordinator) {
+    static func dismantleUIView(_ uiView: UIView, coordinator: Coordinator) {
         coordinator.controllerBridge.stop()
         coordinator.streamManager?.stopStream()
         coordinator.streamManager = nil
+        Air.stop()
     }
 
     func makeCoordinator() -> Coordinator {
@@ -194,17 +231,6 @@ struct StreamingScreenView: UIViewRepresentable {
 }
 
 extension StreamingScreenView.Coordinator {
-    @objc func panRecognizer(_ recognizer: UIPanGestureRecognizer) {
-        guard let view = recognizer.view else { return }
-        let translation = recognizer.translation(in: view)
-        recognizer.setTranslation(.zero, in: view)
-        LiSendMouseMoveEvent(Int16(translation.x), Int16(translation.y))
-    }
-
-    @objc func tapRecognizer(_ recognizer: UITapGestureRecognizer) {
-        LiSendMouseButtonEvent(ButtonAction.press.rawValue, MouseButton.left.rawValue)
-        LiSendMouseButtonEvent(ButtonAction.release.rawValue, MouseButton.left.rawValue)
-    }
 }
 
 extension StreamingScreenView.Coordinator: ConnectionCallbacks {
