@@ -3,8 +3,8 @@
 import UIKit
 import SwiftUI
 
+@available(visionOS, unavailable, message: "AirPlay external display is not supported on Vision Pro.")
 public class Air {
-    
     static let shared = Air()
     
     public var connected: Bool = false {

@@ -79,4 +79,8 @@ extension TemporaryHost {
         case unpaired
         case paired
     }
+
+    var currentlyInGame: Bool {
+        currentGame.isNilOrEmpty && currentGame != "0"
+    }
 }

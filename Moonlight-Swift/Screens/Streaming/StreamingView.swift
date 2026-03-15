@@ -32,7 +32,6 @@ struct StreamingView: View {
         Group {
             if let config = prepareToStream() {
                 StreamingScreenView(config: config)
-                    .ignoresSafeArea()
             } else {
                 Text("Failed to ferch config")
             }
@@ -178,24 +177,38 @@ private extension StreamingView {
     }
 
     func currentScreenResolution() -> (width: Int, height: Int)? {
-        let screen = UIApplication.shared.connectedScenes
+        let window = UIApplication.shared.connectedScenes
             .compactMap { $0 as? UIWindowScene }
             .filter { $0.activationState == .foregroundActive }
             .first?
-            .screen
+            .keyWindow
 
-        guard let screen else {
+        guard let window else {
             return nil
         }
 
-        let nativeBounds = screen.nativeBounds
-        let width = max(nativeBounds.width, nativeBounds.height)
-        let height = min(nativeBounds.width, nativeBounds.height)
+        let rawBounds = window.bounds
+
+        let rawWidth = window.bounds.width * window.layer.contentsScale
+        let rawHeight = window.bounds.height * window.layer.contentsScale
+
+        let width = max(rawWidth, rawHeight)
+        let height = min(rawWidth, rawHeight)
+
         return (width: Int(width), height: Int(height))
     }
 }
 
-struct StreamingScreenView: UIViewRepresentable {
+struct StreamingScreenView: View {
+    let config: StreamConfiguration
+
+    var body: some View {
+        StreamingScreenViewRepresentation(config: config)
+            .ignoresSafeArea()
+    }
+}
+
+struct StreamingScreenViewRepresentation: UIViewRepresentable {
     let config: StreamConfiguration
 
     func makeUIView(context: Context) -> UIView {
@@ -206,7 +219,9 @@ struct StreamingScreenView: UIViewRepresentable {
         Task { await streamManager.start() }
 
         context.coordinator.controllerBridge.start()
+#if !os(visionOS)
         Air.play(view)
+#endif
 
         return view
     }
@@ -217,7 +232,9 @@ struct StreamingScreenView: UIViewRepresentable {
         coordinator.controllerBridge.stop()
         coordinator.streamManager?.stopStream()
         coordinator.streamManager = nil
+#if !os(visionOS)
         Air.stop()
+#endif
     }
 
     func makeCoordinator() -> Coordinator {
@@ -230,10 +247,7 @@ struct StreamingScreenView: UIViewRepresentable {
     }
 }
 
-extension StreamingScreenView.Coordinator {
-}
-
-extension StreamingScreenView.Coordinator: ConnectionCallbacks {
+extension StreamingScreenViewRepresentation.Coordinator: ConnectionCallbacks {
     func connectionStarted() {
         Log.i("Connection started")
     }

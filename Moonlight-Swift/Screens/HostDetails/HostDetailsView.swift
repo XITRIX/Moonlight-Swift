@@ -39,7 +39,7 @@ struct HostDetailsView: View {
             apps = await ConnectionHelper.getAppListForHost(host)
         }
         .toolbar {
-            if host.currentGame != nil {
+            if host.currentlyInGame {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         terminatingSession = true

@@ -15,7 +15,7 @@ struct AppView: View {
     @Namespace private var animation
 
     private var gameAvailable: Bool {
-        app.host.currentGame == nil || currentlyActive
+        !app.host.currentlyInGame || currentlyActive
     }
 
     private var currentlyActive: Bool {
