@@ -6,6 +6,7 @@
 //
 
 import AVFoundation
+import GameController
 import SwiftUI
 import UIKit
 import VideoToolbox
@@ -23,15 +24,25 @@ struct StreamingView: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(Settings.self) private var settings
-    
+    @Environment(\.displayScale) private var screenScale
+
     @State private var inputMode: ImputMode = .touch
     @State private var closeSessionPresented = false
     @State private var terminating: Bool = false
+    @FocusState private var streamingSurfaceFocused: Bool
 
     var body: some View {
         Group {
             if let config = prepareToStream() {
                 StreamingScreenView(config: config)
+#if os(visionOS)
+                    .focusable(inputMode == .gamepad)
+                    .focused($streamingSurfaceFocused)
+                    .handlesGameControllerEvents(
+                        matching: .gamepad,
+                        withOptions: .receivesEventsInView(false)
+                    )
+#endif
             } else {
                 Text("Failed to ferch config")
             }
@@ -73,6 +84,14 @@ struct StreamingView: View {
             }
         }
         .interactiveDismissDisabled(true)
+#if os(visionOS)
+        .onAppear {
+            streamingSurfaceFocused = inputMode == .gamepad
+        }
+        .onChange(of: inputMode) { _, newValue in
+            streamingSurfaceFocused = newValue == .gamepad
+        }
+#endif
     }
 }
 
@@ -187,10 +206,8 @@ private extension StreamingView {
             return nil
         }
 
-        let rawBounds = window.bounds
-
-        let rawWidth = window.bounds.width * window.layer.contentsScale
-        let rawHeight = window.bounds.height * window.layer.contentsScale
+        let rawWidth = window.bounds.width * screenScale
+        let rawHeight = window.bounds.height * screenScale
 
         let width = max(rawWidth, rawHeight)
         let height = min(rawWidth, rawHeight)

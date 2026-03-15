@@ -36,9 +36,15 @@ private struct TouchResponderView: UIViewRepresentable {
         scrollGestureRecognizer.maximumNumberOfTouches = 2
         view.addGestureRecognizer(scrollGestureRecognizer)
 
-        let tapGestureRecognizer = UITapGestureRecognizer(target: context.coordinator,
-                                                          action: #selector(Coordinator.tapRecognizer(_:)))
-        view.addGestureRecognizer(tapGestureRecognizer)
+        let leftClickGestureRecognizer = UITapGestureRecognizer(target: context.coordinator,
+                                                          action: #selector(Coordinator.leftClickRecognizer(_:)))
+        leftClickGestureRecognizer.numberOfTouchesRequired = 1
+        view.addGestureRecognizer(leftClickGestureRecognizer)
+
+        let rightClickGestureRecognizer = UITapGestureRecognizer(target: context.coordinator,
+                                                          action: #selector(Coordinator.rightClickRecognizer(_:)))
+        rightClickGestureRecognizer.numberOfTouchesRequired = 2
+        view.addGestureRecognizer(rightClickGestureRecognizer)
 
         return view
     }
@@ -62,7 +68,12 @@ private struct TouchResponderView: UIViewRepresentable {
             LiSendHighResHScrollEvent(Int16(translation.x))
         }
 
-        @objc func tapRecognizer(_ recognizer: UITapGestureRecognizer) {
+        @objc func leftClickRecognizer(_ recognizer: UITapGestureRecognizer) {
+            LiSendMouseButtonEvent(ButtonAction.press.rawValue, MouseButton.left.rawValue)
+            LiSendMouseButtonEvent(ButtonAction.release.rawValue, MouseButton.left.rawValue)
+        }
+
+        @objc func rightClickRecognizer(_ recognizer: UITapGestureRecognizer) {
             LiSendMouseButtonEvent(ButtonAction.press.rawValue, MouseButton.left.rawValue)
             LiSendMouseButtonEvent(ButtonAction.release.rawValue, MouseButton.left.rawValue)
         }

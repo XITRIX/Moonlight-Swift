@@ -63,7 +63,7 @@ extension Settings {
 
 extension Settings {
     nonisolated
-    enum Codec: String, Identifiable, Codable {
+    enum Codec: String, Identifiable, Codable, CaseIterable {
         var id: Self { self }
         case auto
         case h264
@@ -92,7 +92,7 @@ extension Settings {
         case .p720:
             return (width: 1280, height: 720)
         case .p1080:
-            return (width: 480, height: 360)
+            return (width: 1920, height: 1080)
         case .p4k:
             return (width: 3840, height: 2160)
         case .safeArea:
