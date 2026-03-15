@@ -48,6 +48,32 @@ class ConnectionHelper {
         return appAssetResp.data
     }
 
+    static func pairHost(_ address: String, with pin: String) async -> PairManager.Status? {
+        let serverInfoResp = ServerInfoResponse()
+
+        let hMan = HttpManager(hostAddressPortString: address, httpsPort: nil, serverCert: nil)
+
+        await hMan.executeRequest(.init(for: serverInfoResp, with: hMan.newServerInfoRequest(fastFail: false), fallbackError: 401, fallbackRequest: hMan.newHttpServerInfoRequest()))
+
+        guard serverInfoResp.isStatusOk else {
+            Log.w("Failed to get server info: \(serverInfoResp.statusMessage)")
+            return .pairFailed(message: "Failed to get server info: \(serverInfoResp.statusMessage)")
+        }
+
+        let host = TemporaryHost()
+        serverInfoResp.populateHost(host)
+        if host.pairState == .paired {
+            Log.i("Already paired")
+            return .alreadyPaired
+        }
+
+        let pMan = PairManager(httpManager: hMan, clientCert: CryptoManager.readCertFromFile())
+        return .alreadyPaired
+//        return await pMan.startPairing(with: pin)
+    }
+}
+
+private extension ConnectionHelper {
     private static func getCacheAssetData(for appId: String, in host: TemporaryHost) -> Data? {
         guard let cacheDirectory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
         else { return nil }

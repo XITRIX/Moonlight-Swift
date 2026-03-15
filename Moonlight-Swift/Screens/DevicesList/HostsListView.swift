@@ -48,13 +48,7 @@ struct HostsListView: View {
         .toolbarTitleDisplayMode(.inlineLarge)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button {
-
-                } label: {
-                    Image(systemName: "plus")
-                        .foregroundStyle(.white)
-                }
-                .buttonStyle(.borderedProminent)
+                AddHostView()
             }
 
             ToolbarItemGroup(placement: .bottomBar) {
