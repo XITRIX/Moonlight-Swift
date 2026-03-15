@@ -28,6 +28,7 @@ private struct TouchResponderView: UIViewRepresentable {
                                                           action: #selector(Coordinator.panRecognizer(_:)))
         panGestureRecognizer.minimumNumberOfTouches = 1
         panGestureRecognizer.maximumNumberOfTouches = 1
+        panGestureRecognizer.delegate = context.coordinator
         view.addGestureRecognizer(panGestureRecognizer)
 
         let scrollGestureRecognizer = UIPanGestureRecognizer(target: context.coordinator,
@@ -41,6 +42,17 @@ private struct TouchResponderView: UIViewRepresentable {
         leftClickGestureRecognizer.numberOfTouchesRequired = 1
         view.addGestureRecognizer(leftClickGestureRecognizer)
 
+        let leftDragGestureRecognizer = UILongPressGestureRecognizer(target: context.coordinator,
+                                                                     action: #selector(Coordinator.leftDragRecognizer(_:)))
+        leftDragGestureRecognizer.numberOfTouchesRequired = 1
+        leftDragGestureRecognizer.numberOfTapsRequired = 2
+        leftDragGestureRecognizer.minimumPressDuration = 0
+        leftDragGestureRecognizer.allowableMovement = .greatestFiniteMagnitude
+        leftDragGestureRecognizer.delegate = context.coordinator
+        view.addGestureRecognizer(leftDragGestureRecognizer)
+
+        leftClickGestureRecognizer.require(toFail: leftDragGestureRecognizer)
+
         let rightClickGestureRecognizer = UITapGestureRecognizer(target: context.coordinator,
                                                           action: #selector(Coordinator.rightClickRecognizer(_:)))
         rightClickGestureRecognizer.numberOfTouchesRequired = 2
@@ -51,7 +63,9 @@ private struct TouchResponderView: UIViewRepresentable {
 
     func updateUIView(_ uiView: UIView, context: Context) {}
 
-    final class Coordinator: NSObject {
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        private var isLeftButtonHeld = false
+
         @objc func panRecognizer(_ recognizer: UIPanGestureRecognizer) {
             guard let view = recognizer.view else { return }
             let translation = recognizer.translation(in: view)
@@ -73,9 +87,35 @@ private struct TouchResponderView: UIViewRepresentable {
             LiSendMouseButtonEvent(ButtonAction.release.rawValue, MouseButton.left.rawValue)
         }
 
+        @objc func leftDragRecognizer(_ recognizer: UILongPressGestureRecognizer) {
+            switch recognizer.state {
+            case .began:
+                guard !isLeftButtonHeld else { return }
+                isLeftButtonHeld = true
+                LiSendMouseButtonEvent(ButtonAction.press.rawValue, MouseButton.left.rawValue)
+            case .ended, .cancelled, .failed:
+                guard isLeftButtonHeld else { return }
+                isLeftButtonHeld = false
+                LiSendMouseButtonEvent(ButtonAction.release.rawValue, MouseButton.left.rawValue)
+            default:
+                break
+            }
+        }
+
         @objc func rightClickRecognizer(_ recognizer: UITapGestureRecognizer) {
             LiSendMouseButtonEvent(ButtonAction.press.rawValue, MouseButton.left.rawValue)
             LiSendMouseButtonEvent(ButtonAction.release.rawValue, MouseButton.left.rawValue)
+        }
+
+        func gestureRecognizer(
+            _ gestureRecognizer: UIGestureRecognizer,
+            shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
+        ) -> Bool {
+            let isPanAndHoldPair =
+                (gestureRecognizer is UIPanGestureRecognizer && otherGestureRecognizer is UILongPressGestureRecognizer) ||
+                (gestureRecognizer is UILongPressGestureRecognizer && otherGestureRecognizer is UIPanGestureRecognizer)
+
+            return isPanAndHoldPair
         }
     }
 }

@@ -53,27 +53,63 @@ final class ControllerBridge {
         guard let gamepad = controller.extendedGamepad else { return }
         let controllerNumber = slot(for: controller)
 
-        gamepad.valueChangedHandler = { _, _ in
-            let flags = self.buttonFlags(from: gamepad)
-            let lt = UInt8(clamping: Int(gamepad.leftTrigger.value * 255))
-            let rt = UInt8(clamping: Int(gamepad.rightTrigger.value * 255))
-            let lx = Int16(max(-32767, min(32767, Int(gamepad.leftThumbstick.xAxis.value * 32767))))
-            let ly = Int16(max(-32767, min(32767, Int(gamepad.leftThumbstick.yAxis.value * 32767))))
-            let rx = Int16(max(-32767, min(32767, Int(gamepad.rightThumbstick.xAxis.value * 32767))))
-            let ry = Int16(max(-32767, min(32767, Int(gamepad.rightThumbstick.yAxis.value * 32767))))
-
-            LiSendMultiControllerEvent(
-                controllerNumber,
-                self.activeGamepadMask(),
-                flags,
-                lt,
-                rt,
-                lx,
-                ly,
-                rx,
-                ry
-            )
+        let sendState = { [weak self] in
+            self?.sendCurrentState(of: gamepad, controllerNumber: controllerNumber)
         }
+
+        gamepad.valueChangedHandler = { _, _ in
+            sendState()
+        }
+
+        let buttonInputs: [GCControllerButtonInput] = [
+            gamepad.buttonA,
+            gamepad.buttonB,
+            gamepad.buttonX,
+            gamepad.buttonY,
+            gamepad.leftShoulder,
+            gamepad.rightShoulder,
+            gamepad.leftTrigger,
+            gamepad.rightTrigger,
+            gamepad.buttonMenu,
+        ]
+
+        buttonInputs.forEach { button in
+            button.pressedChangedHandler = { _, _, _ in
+                sendState()
+            }
+            button.valueChangedHandler = { _, _, _ in
+                sendState()
+            }
+        }
+
+        let optionalButtons = [
+            gamepad.buttonOptions,
+            gamepad.leftThumbstickButton,
+            gamepad.rightThumbstickButton,
+        ]
+
+        optionalButtons.forEach { button in
+            button?.pressedChangedHandler = { _, _, _ in
+                sendState()
+            }
+            button?.valueChangedHandler = { _, _, _ in
+                sendState()
+            }
+        }
+
+        let directionPads: [GCControllerDirectionPad] = [
+            gamepad.dpad,
+            gamepad.leftThumbstick,
+            gamepad.rightThumbstick,
+        ]
+
+        directionPads.forEach { pad in
+            pad.valueChangedHandler = { _, _, _ in
+                sendState()
+            }
+        }
+
+        sendState()
     }
 
     private func slot(for controller: GCController) -> Int16 {
@@ -117,5 +153,27 @@ final class ControllerBridge {
         if gamepad.leftThumbstickButton?.isPressed == true { flags |= LS_CLK_FLAG }
         if gamepad.rightThumbstickButton?.isPressed == true { flags |= RS_CLK_FLAG }
         return flags
+    }
+
+    private func sendCurrentState(of gamepad: GCExtendedGamepad, controllerNumber: Int16) {
+        let flags = buttonFlags(from: gamepad)
+        let lt = UInt8(clamping: Int(gamepad.leftTrigger.value * 255))
+        let rt = UInt8(clamping: Int(gamepad.rightTrigger.value * 255))
+        let lx = Int16(max(-32767, min(32767, Int(gamepad.leftThumbstick.xAxis.value * 32767))))
+        let ly = Int16(max(-32767, min(32767, Int(gamepad.leftThumbstick.yAxis.value * 32767))))
+        let rx = Int16(max(-32767, min(32767, Int(gamepad.rightThumbstick.xAxis.value * 32767))))
+        let ry = Int16(max(-32767, min(32767, Int(gamepad.rightThumbstick.yAxis.value * 32767))))
+
+        LiSendMultiControllerEvent(
+            controllerNumber,
+            activeGamepadMask(),
+            flags,
+            lt,
+            rt,
+            lx,
+            ly,
+            rx,
+            ry
+        )
     }
 }
